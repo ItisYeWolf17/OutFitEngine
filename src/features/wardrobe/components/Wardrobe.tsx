@@ -1,4 +1,4 @@
-import { useAuth } from '../auth/authStore'
+import { useAuth } from '@/features/auth'
 
 // UI copy stays in Spanish on purpose: see the design section of PLAN.md.
 export function Wardrobe() {

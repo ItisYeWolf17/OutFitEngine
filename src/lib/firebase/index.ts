@@ -1,0 +1,5 @@
+export { app } from './config'
+export { auth, googleProvider } from './auth'
+export { db } from './firestore'
+export { storage } from './storage'
+export { functions } from './functions'

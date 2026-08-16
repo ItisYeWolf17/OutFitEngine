@@ -1,12 +1,4 @@
-import { initializeApp } from 'firebase/app'
-import { GoogleAuthProvider, getAuth } from 'firebase/auth'
-import {
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-} from 'firebase/firestore'
-import { getFunctions } from 'firebase/functions'
-import { getStorage } from 'firebase/storage'
+import { type FirebaseApp, initializeApp } from 'firebase/app'
 import { z } from 'zod'
 
 // Failing here, at startup, is far cheaper than failing inside a Firestore
@@ -22,7 +14,9 @@ const env = z
   })
   .parse(import.meta.env)
 
-const app = initializeApp({
+// These values are public by design: they ship in the bundle. What protects
+// the data are the Firestore and Storage rules.
+export const app: FirebaseApp = initializeApp({
   apiKey: env.VITE_FIREBASE_API_KEY,
   authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: env.VITE_FIREBASE_PROJECT_ID,
@@ -30,15 +24,3 @@ const app = initializeApp({
   messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: env.VITE_FIREBASE_APP_ID,
 })
-
-export const auth = getAuth(app)
-export const googleProvider = new GoogleAuthProvider()
-
-// Local persistence: the wardrobe and its suggestions must open without a
-// network connection.
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-})
-
-export const storage = getStorage(app)
-export const functions = getFunctions(app)

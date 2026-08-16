@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom'
-import { useAuth } from './authStore'
+import { useAuth } from '../hooks/useAuth'
 
 // UI copy stays in Spanish on purpose: see the design section of PLAN.md.
 export function Login() {

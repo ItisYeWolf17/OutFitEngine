@@ -1,0 +1,61 @@
+rules_version = '2';
+
+// Usuario unico, datos bajo usuarios/{uid}. El principio que sostiene todo
+// esto: el cliente nunca decide cuanto puede gastar. Los campos que controlan
+// el presupuesto solo los escribe el Admin SDK, que ignora estas reglas.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function esDueno(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function tocaCampos(campos) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAny(campos);
+    }
+
+    // Perfil. El cliente puede escribir su foto modelo, no su presupuesto.
+    match /usuarios/{uid} {
+      allow read: if esDueno(uid);
+      allow create: if esDueno(uid)
+                    && !request.resource.data.keys().hasAny(['presupuestoImagenes', 'imagenesGeneradas']);
+      allow update: if esDueno(uid)
+                    && !tocaCampos(['presupuestoImagenes', 'imagenesGeneradas']);
+      allow delete: if false;
+    }
+
+    match /usuarios/{uid}/prendas/{prendaId} {
+      allow read, write: if esDueno(uid);
+    }
+
+    // renderUrl vale dinero: lo escribe la Cloud Function despues de cobrar
+    // el render contra el presupuesto, nunca el cliente.
+    match /usuarios/{uid}/outfits/{outfitId} {
+      allow read: if esDueno(uid);
+      allow create: if esDueno(uid) && !('renderUrl' in request.resource.data);
+      allow update: if esDueno(uid) && !tocaCampos(['renderUrl']);
+      allow delete: if esDueno(uid);
+    }
+
+    match /usuarios/{uid}/registro/{fecha} {
+      allow read, write: if esDueno(uid);
+    }
+
+    // Bitacora de gasto: se lee para la pantalla de presupuesto, se escribe
+    // solo desde el servidor.
+    match /usuarios/{uid}/gastos/{gastoId} {
+      allow read: if esDueno(uid);
+      allow write: if false;
+    }
+
+    // Rate limiting por usuario: contadores del lado del servidor.
+    match /usuarios/{uid}/limites/{ventana} {
+      allow read: if esDueno(uid);
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

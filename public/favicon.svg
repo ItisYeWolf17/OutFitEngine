@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ropero">
+  <rect width="512" height="512" fill="#faf9f7"/>
+  <g fill="none" stroke="#1c1a17" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M256 236V192a40 40 0 1 1 40-40"/>
+    <path d="M256 236 116 344h280Z"/>
+  </g>
+</svg>

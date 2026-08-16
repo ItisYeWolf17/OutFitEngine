@@ -1,0 +1,25 @@
+@import 'tailwindcss';
+
+/* El sujeto es la ropa. La interfaz es el fondo neutro sobre el que se ve.
+   Nada de acentos saturados compitiendo con las fotos. */
+@theme {
+  --color-papel: #faf9f7;
+  --color-tinta: #1c1a17;
+  --color-tenue: #6f6a63;
+  --color-linea: #e4e1db;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-papel);
+    color: var(--color-tinta);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    /* En standalone la app llega hasta el borde: respetamos el notch. */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
+    overscroll-behavior-y: none;
+  }
+}

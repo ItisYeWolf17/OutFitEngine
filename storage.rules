@@ -2,13 +2,27 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // Misma lista que firestore.rules. Si se agrega a alguien aca, agregarlo
+    // alla tambien: son dos servicios distintos y no comparten reglas.
+    function permitidos() {
+      return [
+        'oDpYcDSYHARdX5k5R76al8z4QMo2',
+      ];
+    }
+
+    function esDueno(uid) {
+      return request.auth != null
+             && request.auth.uid == uid
+             && uid in permitidos();
+    }
+
     match /usuarios/{uid}/{ruta=**} {
-      allow read: if request.auth != null && request.auth.uid == uid;
+      allow read: if esDueno(uid);
 
       // Las fotos se comprimen en el cliente a menos de 60 KB (fase 2). El
       // tope de 2 MB es la red de contencion, no el objetivo.
-      allow write: if request.auth != null
-                   && request.auth.uid == uid
+      allow write: if esDueno(uid)
                    && request.resource.size < 2 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
     }

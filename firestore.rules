@@ -6,8 +6,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Firebase Auth acepta cualquier cuenta de Google, asi que sin esta lista
+    // cualquiera con el enlace podria registrarse y escribir en el proyecto.
+    //
+    // Va por uid y no por correo porque este repo es publico: un uid es un
+    // identificador opaco que no revela quien es nadie y no sirve de nada sin
+    // la cuenta de Google detras. Para sumar a alguien: que entre una vez
+    // (va a recibir permiso denegado), sacar su uid con
+    // `firebase auth:export`, y agregarlo aca y en storage.rules.
+    function permitidos() {
+      return [
+        'oDpYcDSYHARdX5k5R76al8z4QMo2',
+      ];
+    }
+
+    // Cada quien ve solo su propio /usuarios/{uid}: la lista dice quien entra,
+    // no quien ve que.
     function esDueno(uid) {
-      return request.auth != null && request.auth.uid == uid;
+      return request.auth != null
+             && request.auth.uid == uid
+             && uid in permitidos();
     }
 
     function tocaCampos(campos) {

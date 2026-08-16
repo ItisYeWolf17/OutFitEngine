@@ -3,31 +3,31 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Misma lista que firestore.rules. Si se agrega a alguien aca, agregarlo
-    // alla tambien: son dos servicios distintos y no comparten reglas.
-    function permitidos() {
+    // Same list as firestore.rules. If you add someone here, add them there
+    // too: these are two separate services and they do not share rules.
+    function allowed() {
       return [
         'oDpYcDSYHARdX5k5R76al8z4QMo2',
       ];
     }
 
-    function esDueno(uid) {
+    function isOwner(uid) {
       return request.auth != null
              && request.auth.uid == uid
-             && uid in permitidos();
+             && uid in allowed();
     }
 
-    match /usuarios/{uid}/{ruta=**} {
-      allow read: if esDueno(uid);
+    match /users/{uid}/{path=**} {
+      allow read: if isOwner(uid);
 
-      // Las fotos se comprimen en el cliente a menos de 60 KB (fase 2). El
-      // tope de 2 MB es la red de contencion, no el objetivo.
-      allow write: if esDueno(uid)
+      // Photos are compressed client-side to under 60 KB (phase 2). The 2 MB
+      // ceiling is the backstop, not the target.
+      allow write: if isOwner(uid)
                    && request.resource.size < 2 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
     }
 
-    match /{ruta=**} {
+    match /{path=**} {
       allow read, write: if false;
     }
   }

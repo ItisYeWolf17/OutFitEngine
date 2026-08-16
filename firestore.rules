@@ -1,74 +1,72 @@
 rules_version = '2';
 
-// Usuario unico, datos bajo usuarios/{uid}. El principio que sostiene todo
-// esto: el cliente nunca decide cuanto puede gastar. Los campos que controlan
-// el presupuesto solo los escribe el Admin SDK, que ignora estas reglas.
+// Single-user app, everything under users/{uid}. The principle holding all of
+// this up: the client never decides how much it can spend. The fields that
+// govern the budget are written only by the Admin SDK, which bypasses these
+// rules entirely.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Firebase Auth acepta cualquier cuenta de Google, asi que sin esta lista
-    // cualquiera con el enlace podria registrarse y escribir en el proyecto.
+    // Firebase Auth accepts any Google account, so without this list anyone
+    // with the link could sign up and write to the project.
     //
-    // Va por uid y no por correo porque este repo es publico: un uid es un
-    // identificador opaco que no revela quien es nadie y no sirve de nada sin
-    // la cuenta de Google detras. Para sumar a alguien: que entre una vez
-    // (va a recibir permiso denegado), sacar su uid con
-    // `firebase auth:export`, y agregarlo aca y en storage.rules.
-    function permitidos() {
+    // These are uids, not emails, because this repo is public: a uid is an
+    // opaque identifier that reveals nothing about anyone and is useless
+    // without the Google account behind it. To add someone: let them sign in
+    // once (they will be denied), read their uid from `firebase auth:export`,
+    // and add it here and in storage.rules.
+    function allowed() {
       return [
         'oDpYcDSYHARdX5k5R76al8z4QMo2',
       ];
     }
 
-    // Cada quien ve solo su propio /usuarios/{uid}: la lista dice quien entra,
-    // no quien ve que.
-    function esDueno(uid) {
+    function isOwner(uid) {
       return request.auth != null
              && request.auth.uid == uid
-             && uid in permitidos();
+             && uid in allowed();
     }
 
-    function tocaCampos(campos) {
-      return request.resource.data.diff(resource.data).affectedKeys().hasAny(campos);
+    function touches(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
     }
 
-    // Perfil. El cliente puede escribir su foto modelo, no su presupuesto.
-    match /usuarios/{uid} {
-      allow read: if esDueno(uid);
-      allow create: if esDueno(uid)
-                    && !request.resource.data.keys().hasAny(['presupuestoImagenes', 'imagenesGeneradas']);
-      allow update: if esDueno(uid)
-                    && !tocaCampos(['presupuestoImagenes', 'imagenesGeneradas']);
+    // Profile. The client may write its own model photo, not its own budget.
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+                    && !request.resource.data.keys().hasAny(['imageBudget', 'imagesGenerated']);
+      allow update: if isOwner(uid)
+                    && !touches(['imageBudget', 'imagesGenerated']);
       allow delete: if false;
     }
 
-    match /usuarios/{uid}/prendas/{prendaId} {
-      allow read, write: if esDueno(uid);
+    match /users/{uid}/garments/{garmentId} {
+      allow read, write: if isOwner(uid);
     }
 
-    // renderUrl vale dinero: lo escribe la Cloud Function despues de cobrar
-    // el render contra el presupuesto, nunca el cliente.
-    match /usuarios/{uid}/outfits/{outfitId} {
-      allow read: if esDueno(uid);
-      allow create: if esDueno(uid) && !('renderUrl' in request.resource.data);
-      allow update: if esDueno(uid) && !tocaCampos(['renderUrl']);
-      allow delete: if esDueno(uid);
+    // renderUrl costs money: it is written by the Cloud Function after the
+    // render has been charged against the budget, never by the client.
+    match /users/{uid}/outfits/{outfitId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && !('renderUrl' in request.resource.data);
+      allow update: if isOwner(uid) && !touches(['renderUrl']);
+      allow delete: if isOwner(uid);
     }
 
-    match /usuarios/{uid}/registro/{fecha} {
-      allow read, write: if esDueno(uid);
+    match /users/{uid}/wearLog/{date} {
+      allow read, write: if isOwner(uid);
     }
 
-    // Bitacora de gasto: se lee para la pantalla de presupuesto, se escribe
-    // solo desde el servidor.
-    match /usuarios/{uid}/gastos/{gastoId} {
-      allow read: if esDueno(uid);
+    // Spending ledger: read for the budget screen, written only by the server.
+    match /users/{uid}/spending/{entryId} {
+      allow read: if isOwner(uid);
       allow write: if false;
     }
 
-    // Rate limiting por usuario: contadores del lado del servidor.
-    match /usuarios/{uid}/limites/{ventana} {
-      allow read: if esDueno(uid);
+    // Per-user rate limiting: server-side counters.
+    match /users/{uid}/rateLimits/{window} {
+      allow read: if isOwner(uid);
       allow write: if false;
     }
 

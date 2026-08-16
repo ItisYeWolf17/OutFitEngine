@@ -1,23 +1,23 @@
 @import 'tailwindcss';
 
-/* El sujeto es la ropa. La interfaz es el fondo neutro sobre el que se ve.
-   Nada de acentos saturados compitiendo con las fotos. */
+/* The clothes are the subject. The interface is the neutral ground you see
+   them against. No saturated accents competing with the photos. */
 @theme {
-  --color-papel: #faf9f7;
-  --color-tinta: #1c1a17;
-  --color-tenue: #6f6a63;
-  --color-linea: #e4e1db;
+  --color-paper: #faf9f7;
+  --color-ink: #1c1a17;
+  --color-muted: #6f6a63;
+  --color-line: #e4e1db;
 }
 
 @layer base {
   html {
-    background-color: var(--color-papel);
-    color: var(--color-tinta);
+    background-color: var(--color-paper);
+    color: var(--color-ink);
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    /* En standalone la app llega hasta el borde: respetamos el notch. */
+    /* Standalone runs edge to edge: respect the notch. */
     padding: env(safe-area-inset-top) env(safe-area-inset-right)
       env(safe-area-inset-bottom) env(safe-area-inset-left);
     overscroll-behavior-y: none;

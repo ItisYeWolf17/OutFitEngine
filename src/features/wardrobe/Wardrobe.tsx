@@ -1,7 +1,8 @@
 import { useAuth } from '../auth/authStore'
 
-export function Ropero() {
-  const { usuario, salir } = useAuth()
+// UI copy stays in Spanish on purpose: see the design section of PLAN.md.
+export function Wardrobe() {
+  const { user, signOut } = useAuth()
 
   return (
     <main className="flex min-h-dvh flex-col px-6 py-8">
@@ -9,18 +10,18 @@ export function Ropero() {
         <h1 className="text-2xl font-medium tracking-tight">Ropero</h1>
         <button
           type="button"
-          onClick={() => void salir()}
-          className="text-sm text-[var(--color-tenue)] underline underline-offset-4"
+          onClick={() => void signOut()}
+          className="text-sm text-[var(--color-muted)] underline underline-offset-4"
         >
           Salir
         </button>
       </header>
 
-      {/* Fase 2 reemplaza esto por el grid y conecta el boton a la camara. */}
+      {/* Phase 2 replaces this with the grid and wires the button to the camera. */}
       <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
         <p className="text-lg">Agregá tu primera prenda</p>
-        <p className="max-w-xs text-sm text-[var(--color-tenue)]">
-          Sesión iniciada como {usuario?.email}. La captura llega en la fase 2.
+        <p className="max-w-xs text-sm text-[var(--color-muted)]">
+          Sesión iniciada como {user?.email}. La captura llega en la fase 2.
         </p>
       </div>
     </main>

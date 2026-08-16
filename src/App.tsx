@@ -1,18 +1,18 @@
 import { Route, Routes } from 'react-router-dom'
 import { Login } from './features/auth/Login'
-import { RutaProtegida } from './features/auth/RutaProtegida'
-import { Ropero } from './features/ropero/Ropero'
+import { ProtectedRoute } from './features/auth/ProtectedRoute'
+import { Wardrobe } from './features/wardrobe/Wardrobe'
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/entrar" element={<Login />} />
+      <Route path="/signin" element={<Login />} />
       <Route
         path="/"
         element={
-          <RutaProtegida>
-            <Ropero />
-          </RutaProtegida>
+          <ProtectedRoute>
+            <Wardrobe />
+          </ProtectedRoute>
         }
       />
     </Routes>

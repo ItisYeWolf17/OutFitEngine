@@ -9,9 +9,9 @@ import { getFunctions } from 'firebase/functions'
 import { getStorage } from 'firebase/storage'
 import { z } from 'zod'
 
-// Fallar aca, al arrancar, es mucho mas barato que fallar dentro de un
-// listener de Firestore con un mensaje que no dice nada.
-const entorno = z
+// Failing here, at startup, is far cheaper than failing inside a Firestore
+// listener with a message that tells you nothing.
+const env = z
   .object({
     VITE_FIREBASE_API_KEY: z.string().min(1),
     VITE_FIREBASE_AUTH_DOMAIN: z.string().min(1),
@@ -23,18 +23,19 @@ const entorno = z
   .parse(import.meta.env)
 
 const app = initializeApp({
-  apiKey: entorno.VITE_FIREBASE_API_KEY,
-  authDomain: entorno.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: entorno.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: entorno.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: entorno.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: entorno.VITE_FIREBASE_APP_ID,
+  apiKey: env.VITE_FIREBASE_API_KEY,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: env.VITE_FIREBASE_APP_ID,
 })
 
 export const auth = getAuth(app)
-export const proveedorGoogle = new GoogleAuthProvider()
+export const googleProvider = new GoogleAuthProvider()
 
-// Persistencia local: el ropero y las sugerencias tienen que abrir sin red.
+// Local persistence: the wardrobe and its suggestions must open without a
+// network connection.
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 })

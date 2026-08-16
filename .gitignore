@@ -30,3 +30,9 @@ dist-ssr
 # firebase
 .firebase/
 firebase-debug.log
+
+# salida generada por graphify
+graphify-out/
+
+# config local de graphify: rutas absolutas de esta maquina
+.claude/settings.json

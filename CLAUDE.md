@@ -69,6 +69,27 @@ del closet y mirar: tiene que ser más rápida que eso.
 
 ## Estado
 
-Fase 0 (scaffolding, auth, PWA, guardas de costo) en curso. Las fases están en
-`PLAN.md`. Se trabaja una fase por sesión, corriendo los criterios de
-aceptación antes de avanzar.
+Fase 0 completa y verificada: proyecto `ropero-outfitengine`, auth con Google,
+PWA instalada en Android con la sesión persistiendo, Hosting en
+`https://ropero-outfitengine.web.app`, reglas desplegadas, presupuesto de $5
+midiendo gasto bruto y `cortarFacturacion` desvinculando la facturación al
+superarlo.
+
+Acceso limitado por lista blanca de correos en `firestore.rules` y
+`storage.rules`. Por ahora solo el correo del dueño. Si más adelante se suman
+usuarios, se agregan a esa lista en ambos archivos y se redespliegan las
+reglas: cada quien tendría su propio ropero, pero el presupuesto de
+facturación seguiría siendo uno solo para todo el proyecto.
+
+Sigue la fase 1. Las fases están en `PLAN.md`. Se trabaja una fase por sesión,
+corriendo los criterios de aceptación antes de avanzar.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).

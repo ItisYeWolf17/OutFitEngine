@@ -1,0 +1,34 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Same list as firestore.rules. If you add someone here, add them there
+    // too: these are two separate services and they do not share rules.
+    function allowed() {
+      return [
+        'oDpYcDSYHARdX5k5R76al8z4QMo2',
+      ];
+    }
+
+    function isOwner(uid) {
+      return request.auth != null
+             && request.auth.uid == uid
+             && uid in allowed();
+    }
+
+    match /users/{uid}/{path=**} {
+      allow read: if isOwner(uid);
+
+      // Photos are compressed client-side to under 60 KB (phase 2). The 2 MB
+      // ceiling is the backstop, not the target.
+      allow write: if isOwner(uid)
+                   && request.resource.size < 2 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -19,7 +19,7 @@ renderiza cómo se ve el usuario con cada outfit puesto.
 | Framework | React + Vite + TypeScript | Reutiliza experiencia previa con React/Firestore |
 | Base de datos | Firestore | Free tier real; ya conocido |
 | Auth | Firebase Auth (Google provider) | Usuario único, sin fricción |
-| Imágenes | Comprimidas en cliente + Cloudinary o Supabase Storage | Firebase Storage exige plan Blaze con tarjeta |
+| Imágenes | Comprimidas en cliente + Firebase Storage | Con Blaze ya vinculado, el motivo para evitarlo desapareció; un proveedor menos |
 | Motor de sugerencias | Reglas deterministas en el cliente | Costo cero, offline, instantáneo |
 | Etiquetado de prendas | Modelo con visión, **una vez por prenda** | ~$0.50 total para todo el ropero |
 | Try-on | Bajo demanda, con caché por hash, presupuesto de ~30 renders | El resto se resuelve con collage |
@@ -44,6 +44,7 @@ React 18 + TypeScript + Vite
 ├── Validación      Zod
 ├── Estilos         Tailwind CSS
 ├── Imágenes        browser-image-compression + @imgly/background-removal
+├── Storage         Firebase Storage
 ├── Visión          Gemini API (structured output)
 └── Try-on          Nano Banana Pro / Gemini Image (a través de Cloud Function)
 ```
@@ -57,66 +58,54 @@ Una key en el bundle de una PWA es una key pública.
 
 ## 2. Estructura de carpetas
 
-```
-src/
-├── domain/
-│   ├── types.ts              # taxonomía (ya escrito)
-│   ├── outfitEngine.ts       # reglas + scoring (ya escrito)
-│   └── outfitEngine.test.ts
-├── data/
-│   ├── firebase.ts           # init, auth, db
-│   ├── prendasRepo.ts        # CRUD + listener
-│   ├── outfitsRepo.ts        # caché de outfits y renders
-│   └── schemas.ts            # Zod: valida lo que devuelve el modelo
-├── features/
-│   ├── captura/              # cámara, compresión, recorte de fondo
-│   ├── ropero/               # grid, detalle, edición de prenda
-│   ├── sugerencias/          # "¿qué me pongo hoy?"
-│   ├── collage/              # composición flat-lay en canvas
-│   └── tryon/                # render, presupuesto, galería
-├── components/ui/            # botones, sheets, inputs
-├── hooks/
-└── App.tsx
+La estructura real vive en `CLAUDE.md` y `docs/architecture/overview.md`, que
+son los que se mantienen al día. Este documento es de planificación, no de
+arquitectura.
 
-functions/                    # Cloud Functions
-├── etiquetarPrenda.ts        # foto → atributos JSON
-└── renderizarOutfit.ts       # foto persona + prendas → imagen
-```
+Las features que faltan por construir, con la fase que las trae:
+
+| Feature | Fase |
+|---|---|
+| `features/capture` — cámara, compresión, recorte de fondo | 2 |
+| `features/wardrobe` — grid, detalle, edición | 2 (esqueleto ya existe) |
+| `features/suggestions` — "¿qué me pongo hoy?" | 4 |
+| `features/collage` — composición flat-lay en canvas | 4 |
+| `features/tryon` — render, presupuesto, galería | 5 |
+| `functions/tagGarment` — foto → atributos JSON | 3 |
+| `functions/renderOutfit` — foto persona + prendas → imagen | 5 |
 
 ---
 
 ## 3. Modelo de datos
 
 ```
-usuarios/{uid}
-├── perfil
-│   ├── fotoModeloUrl
-│   ├── presupuestoImagenes: number      # contador restante
-│   └── imagenesGeneradas: number
-├── prendas/{prendaId}                   # ver Prenda en types.ts
+users/{uid}
+├── modelPhotoUrl
+├── imageBudget: number                  # contador restante, solo servidor
+├── imagesGenerated: number              # solo servidor
+├── garments/{garmentId}                 # ver Garment en src/domain/types.ts
 ├── outfits/{outfitId}                   # id = hash determinístico
-│   ├── prendaIds[], formalidad, ocasiones[], temporadas[]
-│   ├── renderUrl?                       # solo si se pagó
-│   ├── vecesUsada, ultimoUso, rating
-└── registro/{fecha}                     # qué se usó cada día
+│   ├── garmentIds[], formality, occasions[], seasons[]
+│   ├── renderUrl?                       # solo si se pagó, solo servidor
+│   ├── timesWorn, lastWorn, rating
+├── wearLog/{date}                       # qué se usó cada día
+├── spending/{entryId}                   # costo estimado por llamada
+└── rateLimits/{window}                  # contadores de rate limit
 ```
 
-**Índices compuestos requeridos en Firestore:**
-- `prendas`: `activa ASC, categoria ASC, formalidad ASC`
-- `outfits`: `ocasiones ARRAY, ultimoUso ASC`
+**Índices compuestos:** ninguno por ahora. El ropero completo son unas decenas
+de documentos que se leen de una y se filtran en memoria, que es lo que el
+motor hace igual. Se agregan cuando una consulta real los pida.
 
-**Reglas de seguridad (mínimo viable):**
-```js
-match /usuarios/{uid}/{document=**} {
-  allow read, write: if request.auth != null && request.auth.uid == uid;
-}
-```
+**Reglas de seguridad:** ya desplegadas. Niegan por defecto, filtran por una
+lista de uids permitidos, y le prohíben al cliente escribir `imageBudget`,
+`imagesGenerated` y `renderUrl`. Ver `docs/decisions/0003-access-allowlist.md`.
 
 ---
 
 ## 4. Fases
 
-### Fase 0 — Scaffolding
+### Fase 0 — Scaffolding · ✅ completa
 **Entregable:** app vacía desplegada y auth funcionando.
 
 - Vite + React + TS + Tailwind + React Router
@@ -130,7 +119,7 @@ navegador, el login persiste al cerrar y reabrir.
 
 ---
 
-### Fase 1 — Dominio y pruebas
+### Fase 1 — Dominio y pruebas · ✅ completa
 **Entregable:** motor de reglas probado, sin UI.
 
 - Copiar `types.ts` y `outfitEngine.ts`
@@ -139,18 +128,25 @@ navegador, el login persiste al cerrar y reabrir.
   rechazan; negro con azul marino se rechaza; `outfitId` es estable ante
   reordenamiento; la poda temprana no descarta combinaciones válidas
 
-**Aceptación:** `npm test` verde. Un ropero de 15/8/5 genera entre 150 y 250
-outfits viables en menos de 100 ms.
+**Aceptación:** `npm test` verde. Un ropero de 15/8/5 genera outfits viables en
+menos de 100 ms — medido: 1 ms.
+
+> El rango "entre 150 y 250" del plan original se reemplazó. Ese número mide
+> qué prendas tiene el fixture, no si el motor funciona: aflojar un color en el
+> fixture lo mete en rango sin tocar el motor. En su lugar hay un snapshot del
+> conteo, que avisa cuando una regla cambia el resultado, y una banda ancha que
+> detecta los dos fracasos reales: que la cascada no filtre nada o que vacíe el
+> ropero.
 
 ---
 
-### Fase 2 — Captura y catálogo
+### Fase 2 — Captura y catálogo · ⏳ siguiente
 **Entregable:** poder cargar el ropero completo a mano.
 
-- Formulario de prenda con todos los campos de `Prenda`
+- Formulario de prenda con todos los campos de `Garment`
 - Captura de foto vía `<input type="file" accept="image/*" capture>`
 - Compresión: WebP, lado mayor 800 px, calidad 0.8, objetivo < 60 KB
-- Subida a Cloudinary/Supabase, URL en Firestore
+- Subida a Firebase Storage, URL en Firestore
 - Grid del ropero con filtros por categoría y estado activo/inactivo
 - Edición y desactivación de prendas
 
@@ -162,7 +158,7 @@ carga en menos de 1 s con caché en frío.
 ### Fase 3 — Etiquetado automático
 **Entregable:** la foto llena el formulario sola.
 
-- Cloud Function `etiquetarPrenda`: recibe imagen base64, llama a Gemini con
+- Cloud Function `tagGarment`: recibe imagen base64, llama a Gemini con
   el prompt de extracción, devuelve JSON
 - Validación con Zod; si falla el parseo, un reintento y luego formulario manual
 - El formulario se pre-llena y queda editable — el modelo propone, el usuario confirma
@@ -177,11 +173,11 @@ veces; formalidad al menos 7. Costo total del etiquetado registrado y menor a $0
 **Entregable:** la pantalla que resuelve el problema real.
 
 - Pantalla principal: selector de ocasión + estado del clima
-- Llama a `sugerir()` y muestra 5 outfits ordenados por score
+- Llama a `suggest()` y muestra 5 outfits ordenados por score
 - Cada outfit se muestra como **collage flat-lay**: recorte de fondo con
   `@imgly/background-removal` (corre local, sin costo), composición en canvas
-- Botón "me puse esto" que incrementa `vecesUsada`, setea `ultimoUso` en el
-  outfit y en cada prenda, y escribe en `registro/{fecha}`
+- Botón "me puse esto" que incrementa `timesWorn`, setea `lastWorn` en el
+  outfit y en cada prenda, y escribe en `wearLog/{date}`
 - Vista "no me he puesto" ordenada por días sin uso
 
 **Aceptación:** con el ropero real cargado, la primera sugerencia para
@@ -194,9 +190,9 @@ en los últimos 7 días aparece en el top 3.
 **Entregable:** verse con la ropa puesta, sin sorpresas en la factura.
 
 - Subida de foto modelo (cuerpo completo, fondo neutro, buena luz)
-- Cloud Function `renderizarOutfit`: foto modelo + fotos de prendas → imagen
+- Cloud Function `renderOutfit`: foto modelo + fotos de prendas → imagen
 - **Antes de llamar:** buscar `outfitId` en Firestore. Si tiene `renderUrl`, devolver esa
-- **Guarda dura:** la function verifica `presupuestoImagenes > 0`, decrementa
+- **Guarda dura:** la function verifica `imageBudget > 0`, decrementa
   atómicamente con una transacción, y rechaza si llegó a cero
 - Botón "vérmelo puesto" solo en el detalle del outfit, nunca automático
 - Pantalla de presupuesto: cuántos renders quedan, cuánto se ha gastado
@@ -209,7 +205,7 @@ API. Con presupuesto en cero, el botón se deshabilita y no hay forma de gastar 
 ### Fase 6 — Pregeneración por lotes
 **Entregable:** catálogo visual de los outfits que más se usan.
 
-- Vista de administración: lista `prioridadRender(outfits, prendas, N)`
+- Vista de administración: lista `renderPriority(outfits, garments, N)`
 - Envío por Batch API (50% de descuento, SLA 24 h)
 - Job asíncrono con estado visible; al completar, escribe `renderUrl` en cada outfit
 - Presupuesto inicial sugerido: 10 formales + 15 de salidas + 5 comodines = 30
@@ -223,7 +219,7 @@ el dashboard de facturación de Google Cloud.
 - Modo offline completo: el ropero y las sugerencias funcionan sin red
 - Estadísticas: prendas nunca usadas, costo por uso, piezas más versátiles
 - Exportación del catálogo a JSON
-- Ajuste de constantes (`CHOQUES`, umbral de formalidad, `PESOS_DEFAULT`)
+- Ajuste de constantes (`CLASHES`, umbral de formalidad, `DEFAULT_WEIGHTS`)
   contra las combinaciones que el usuario aceptó o rechazó en la práctica
 
 ---
@@ -276,7 +272,7 @@ dispare llamadas en loop. Las guardas son contra eso.
 | Los renders no preservan el parecido facial | Probar con 3 fotos modelo distintas antes de gastar el presupuesto |
 | Zapatos y accesorios mal renderizados | Limitar el try-on a top + bottom + calzado; los accesorios solo en el collage |
 | Los modelos de imagen cambian de precio o se retiran | Aislar el proveedor detrás de la Cloud Function; el cliente no sabe cuál es |
-| Firebase Storage exige Blaze | Ya resuelto: Cloudinary o Supabase |
+| ~~Firebase Storage exige Blaze~~ | Resuelto: la cuenta ya tiene Blaze vinculado |
 
 ---
 
@@ -299,3 +295,37 @@ Orden de trabajo recomendado: 0 → 1 → 2 → **cargar el ropero real completo
 
 Ese paso de cargar el ropero real antes de la fase 4 no es opcional. Las
 constantes del motor de reglas solo se pueden calibrar contra ropa de verdad.
+
+---
+
+## 9. Deuda técnica
+
+Cosas que funcionan pero que hay que pagar en algún momento. No bloquean nada
+hoy; cada una tiene un momento natural para saldarse.
+
+| Deuda | Por qué existe | Cuándo saldarla |
+|---|---|---|
+| `generateOutfits` devuelve siempre `timesWorn: 0` y `lastWorn: null` | Falta el merge contra los outfits persistidos por `outfitId`. Sin eso el término de novedad es una constante | Fase 4, cuando exista el repositorio |
+| `firebase-functions@6` desactualizado | Se fijó al arrancar y salió una major nueva | Antes de escribir `tagGarment`, no después |
+| Los pesos del scoring son constantes del módulo | Con un solo usuario alcanza | Si la app llega a tener más de uno |
+| El presupuesto de $5 es uno solo para todo el proyecto | Es un límite de Cloud Billing, no del código | Si se suman usuarios que rendericen |
+| El topic de Pub/Sub se llama `alertas-presupuesto`, en español | Renombrarlo obliga a recrear topic y presupuesto | Solo si molesta; es churn sobre la guarda de costo |
+| No hay `repositories/` en `functions/` | Ninguna function toca Firestore todavía | Fase 3, cuando haya que registrar gasto |
+
+---
+
+## 10. Mejoras futuras
+
+Ideas que valen pero que no están comprometidas en ninguna fase.
+
+- **Calibrar las constantes contra uso real.** `CLASHES`, el umbral de
+  formalidad y `DEFAULT_WEIGHTS` se afinan contra las combinaciones que se
+  aceptaron o rechazaron en la práctica. Requiere haber usado la app un tiempo.
+- **Convertir el descanso en filtro duro.** Hoy es un peso blando: un outfit con
+  tres favoritas puede ganarle a la penalización por prenda usada ayer. Si el
+  criterio "ninguna prenda usada en los últimos 7 días en el top 3" importa de
+  verdad, tiene que ser un filtro, no un peso.
+- **Carga diferida de Firestore.** El bundle ya bajó a 390 KB al separar los
+  módulos de Firebase, pero cuando la fase 2 importe Firestore volverá a subir.
+  Ahí conviene cargarlo bajo demanda.
+- **Modo offline completo y estadísticas** — ya están como fase 7.

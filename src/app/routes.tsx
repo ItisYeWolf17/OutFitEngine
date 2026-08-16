@@ -1,9 +1,8 @@
 import { Route, Routes } from 'react-router-dom'
-import { Login } from './features/auth/Login'
-import { ProtectedRoute } from './features/auth/ProtectedRoute'
-import { Wardrobe } from './features/wardrobe/Wardrobe'
+import { Login, ProtectedRoute } from '@/features/auth'
+import { Wardrobe } from '@/features/wardrobe'
 
-export default function App() {
+export function AppRoutes() {
   return (
     <Routes>
       <Route path="/signin" element={<Login />} />

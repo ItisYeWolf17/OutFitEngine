@@ -7,7 +7,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { create } from 'zustand'
-import { auth, googleProvider } from '../../data/firebase'
+import { auth, googleProvider } from '@/lib/firebase/auth'
 
 interface AuthState {
   user: User | null

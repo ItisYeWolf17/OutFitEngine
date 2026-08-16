@@ -8,6 +8,12 @@
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
+    /* Nesting features one level deeper would otherwise mean ../../.. chains
+       that break every time a file moves. Mirrored in vite.config.ts. */
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
